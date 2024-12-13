@@ -1,25 +1,30 @@
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlsplit, urlparse, urljoin
 import os
 import sys
 import requests
 from bs4 import BeautifulSoup
 
-visited = []
+visited = {}
 outdir = "output"
 timeout = 10
 
 def write_file(url, content=None):
     if not content:
-        try:
-            res = requests.get(url, timeout=timeout)
-            if not res.ok:
+        if url in visited:
+            content = visited[url]
+        else:
+            try:
+                res = requests.get(url, timeout=timeout)
+                if not res.ok:
+                    print(f"Requesting {url} failed")
+                    return
+
+                content = res.content
+            except:
                 print(f"Requesting {url} failed")
                 return
 
-            content = res.content
-        except:
-            print(f"Requesting {url} failed")
-            return
+    visited[url] = content
 
     filename = os.path.join(outdir, urlparse(url).path[1:])
     dirname = os.path.dirname(filename)
@@ -32,7 +37,6 @@ def crawl(url):
     if url in visited:
         return
 
-    visited.append(url)
     res = requests.get(url, timeout=timeout)
     if not res.ok:
         print(f"Requesting {url} failed")
@@ -42,17 +46,17 @@ def crawl(url):
 
     print(f"Crawling {url}...")
     soup = BeautifulSoup(res.text, 'html.parser')
-    
+
     hostname = urlparse(url).netloc
     def validate_url(path):
         if not path:
             return False
 
         uri = urlparse(path)
-        
+
         if uri.scheme and uri.scheme not in ["http", "https"]:
             return False
-                
+
         if uri.netloc:
             if uri.netloc != hostname:
                 # don't go too far away from our hostname
@@ -77,7 +81,7 @@ def crawl(url):
         href = validate_url(elem.get("href"))
         if not href:
             continue
-            
+
         crawl(href)
 
 if __name__ == "__main__":
