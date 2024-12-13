@@ -6,11 +6,12 @@ from bs4 import BeautifulSoup
 
 visited = []
 outdir = "output"
+timeout = 10
 
 def write_file(url, content=None):
     if not content:
         try:
-            res = requests.get(url)
+            res = requests.get(url, timeout=timeout)
             if not res.ok:
                 print(f"Requesting {url} failed")
                 return
@@ -32,7 +33,7 @@ def crawl(url):
         return
 
     visited.append(url)
-    res = requests.get(url)
+    res = requests.get(url, timeout=timeout)
     if not res.ok:
         print(f"Requesting {url} failed")
         return
