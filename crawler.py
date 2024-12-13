@@ -1,4 +1,4 @@
-from urllib.parse import urlsplit, urlparse, urljoin
+from urllib.parse import urlparse, urljoin
 import os
 import sys
 import requests
@@ -45,15 +45,14 @@ def crawl(url):
     write_file(url, res.content)
 
     print(f"Crawling {url}...")
-    soup = BeautifulSoup(res.text, 'html.parser')
+    soup = BeautifulSoup(res.text, "html.parser")
 
     hostname = urlparse(url).netloc
     def validate_url(path):
         if not path:
             return False
 
-        uri = urlparse(path)
-
+        uri = urlparse(path)._replace(query="", fragment="")
         if uri.scheme and uri.scheme not in ["http", "https"]:
             return False
 
@@ -63,9 +62,9 @@ def crawl(url):
                 return False
         else:
             # relative path
-            return urljoin(url, path)
+            return urljoin(url, uri.geturl())
 
-        return path
+        return uri.geturl()
 
     # images, audio, gif, css, ...
     media_elems = soup.find_all(src=True) + soup.find_all("link", rel="stylesheet")
