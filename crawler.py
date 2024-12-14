@@ -76,13 +76,18 @@ class WebCrawler:
                 if not href_url or href_url in self.visited:
                     continue
 
+                # css probably
+                if href_tag.name == "link":
+                    self.download(href_url)
+                    continue
+
                 self.queue.add(href_url)
 
-            # find all media (image, css, gif, ...)
+            # find all media (image, gif, ...)
             # javascript code too i guess :P
-            media_tags = soup.find_all(src=True) + soup.find_all("link", rel="stylesheet")
+            media_tags = soup.find_all(src=True)
             for media_tag in media_tags:
-                media_url = self.validate_url(url, media_tag.get("src") or media_tag.get("href"))
+                media_url = self.validate_url(url, media_tag.get("src"))
                 if not media_url:
                     continue
 
