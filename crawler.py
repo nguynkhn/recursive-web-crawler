@@ -4,9 +4,10 @@ import sys
 import requests
 from bs4 import BeautifulSoup
 
+queue = [sys.argv[1]]
 visited = {}
 outdir = "output"
-timeout = 10
+timeout = 60
 
 def write_file(url, content=None):
     if not content:
@@ -34,9 +35,6 @@ def write_file(url, content=None):
         file.write(content)
 
 def crawl(url):
-    if url in visited:
-        return
-
     res = requests.get(url, timeout=timeout)
     if not res.ok:
         print(f"Requesting {url} failed")
@@ -52,7 +50,7 @@ def crawl(url):
         if not path:
             return False
 
-        uri = urlparse(path)._replace(query="", fragment="")
+        uri = urlparse(path.lower())._replace(query="", fragment="")
         if uri.scheme and uri.scheme not in ["http", "https"]:
             return False
 
@@ -78,11 +76,12 @@ def crawl(url):
     href_elems = soup.find_all(href=True)
     for elem in href_elems:
         href = validate_url(elem.get("href"))
-        if not href:
+        if not href or href in visited:
             continue
 
-        crawl(href)
+        queue.append(href)
 
 if __name__ == "__main__":
-    url = sys.argv[1]
-    crawl(url)
+    while len(queue) > 0:
+        url = queue.pop()
+        crawl(url)
