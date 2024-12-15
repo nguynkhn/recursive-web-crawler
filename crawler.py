@@ -42,8 +42,8 @@ class WebCrawler:
             content = res.content
 
             uri = self.parse_url(url)
-            url = uri.netloc + uri.path
-            filename = os.path.normpath(os.path.join(self.outdir, url))
+            fileurl = uri.netloc + uri.path
+            filename = os.path.normpath(os.path.join(self.outdir, fileurl))
             dirname = os.path.dirname(filename)
 
             os.makedirs(dirname, exist_ok=True)
