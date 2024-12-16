@@ -43,19 +43,20 @@ class WebCrawler:
         try:
             res = requests.get(uri.geturl(), timeout=self.args.timeout)
 
-            filename = os.path.normpath(uri.netloc + uri.path)
-            filepath = os.path.join(self.args.output, filename)
-            dirpath = os.path.dirname(filepath)
-
-            os.makedirs(dirpath, exist_ok=True)
-            with open(filepath, 'wb') as f:
-                f.write(res.content)
-
             if res.ok:
                 self.cache[uri] = res
+
+                filename = os.path.normpath(uri.netloc + uri.path)
+                filepath = os.path.join(self.args.output, filename)
+                dirpath = os.path.dirname(filepath)
+
+                os.makedirs(dirpath, exist_ok=True)
+                with open(filepath, 'wb') as f:
+                    f.write(res.content)
+
                 return res
-        except:
-            pass
+        except Exception as e:
+            print(e)
 
         return None
 
