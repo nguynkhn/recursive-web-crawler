@@ -5,7 +5,7 @@ import time
 import requests
 import argparse
 
-parse_uri = lambda url: urlsplit(url.lower())._replace(query='', fragment='')
+parse_uri = lambda url: urlsplit(url)._replace(fragment='')
 get_uri_paths = lambda uri: uri.path.strip('/').split('/')[:-1]
 
 class WebCrawler:
@@ -45,31 +45,27 @@ class WebCrawler:
         try:
             res = requests.get(uri.geturl(), timeout=self.args.timeout)
 
+            content = res.content
             if res.ok:
-                content = res.content
                 self.cache[uri] = content
 
-                filename = os.path.normpath(uri.netloc + uri.path)
-                filepath = os.path.join(self.args.output, filename)
-                dirpath = os.path.dirname(filepath)
+            filename = os.path.normpath(uri.netloc + uri.path)
+            filepath = os.path.join(self.args.output, filename)
+            dirpath = os.path.dirname(filepath)
 
-                os.makedirs(dirpath, exist_ok=True)
-                with open(filepath, 'wb') as f:
-                    f.write(res.content)
+            os.makedirs(dirpath, exist_ok=True)
+            with open(filepath, 'wb') as file:
+                file.write(res.content)
 
-                return content
-        except Exception as e:
-            print(e)
+            return content
+        except Exception as error:
+            print(error)
             self.failed.append(uri.geturl())
 
-        return None
+            return None
 
     def crawl(self, uri):
         html = self.fetch_and_save(uri)
-        if not html:
-            print(f'{uri.geturl()} not found!')
-            return
-
         soup = BeautifulSoup(html, 'html.parser')
 
         # find all hrefs
