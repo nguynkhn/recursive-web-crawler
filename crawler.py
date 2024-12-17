@@ -17,7 +17,6 @@ class WebCrawler:
 
         self.queue = set()
         self.cache = {}
-        self.failed = []
 
     def validate_uri(self, uri):
         return not uri.scheme or uri.scheme in ['http', 'https'] \
@@ -39,7 +38,7 @@ class WebCrawler:
             and test_level - base_level <= self.args.depth
 
     def fetch_and_save(self, uri):
-        if uri in self.cache:
+        if uri in self.cache and self.cache[uri]:
             return self.cache[uri]
 
         try:
@@ -60,12 +59,17 @@ class WebCrawler:
             return content
         except Exception as error:
             print(error)
-            self.failed.append(uri.geturl())
+            print(f'Requesting {uri.geturl()} failed...')
 
+            self.cache[uri] = False
             return None
 
     def crawl(self, uri):
         html = self.fetch_and_save(uri)
+        if not html:
+            print(f'{uri.geturl()} has nothing to crawl...')
+            return
+
         soup = BeautifulSoup(html, 'html.parser')
 
         # find all hrefs
@@ -100,23 +104,24 @@ class WebCrawler:
         self.queue.add(self.uri)
 
         start_time = time.perf_counter()
-        while len(self.queue) > 0:
+        while self.queue:
             uri = self.queue.pop()
 
             print(f'Crawling {uri.geturl()}...')
             self.crawl(uri)
 
+        failed_urls = [url for url, ok in self.cache.items() if not ok]
         failed_file = os.path.normpath(os.path.join(
             self.args.output,
             self.uri.netloc,
             'failed.txt'
         ))
         with open(failed_file, 'w') as file:
-            file.write('\n'.join(self.failed))
+            file.write('\n'.join(failed_urls))
 
         time_elapsed = round(time.perf_counter() - start_time, 2)
         print(f'Done! Time elasped: {time_elapsed}s')
-        print(f'Failed URLs: {len(self.failed)} (see {failed_file})')
+        print(f'Failed URLs: {len(failed_urls)} (see {failed_file})')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
