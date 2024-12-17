@@ -1,6 +1,7 @@
 from urllib.parse import urlsplit, urljoin
 from bs4 import BeautifulSoup
 import os
+import time
 import requests
 import argparse
 
@@ -16,6 +17,7 @@ class WebCrawler:
 
         self.queue = set()
         self.cache = {}
+        self.failed = []
 
     def validate_uri(self, uri):
         return not uri.scheme or uri.scheme in ['http', 'https'] \
@@ -44,7 +46,8 @@ class WebCrawler:
             res = requests.get(uri.geturl(), timeout=self.args.timeout)
 
             if res.ok:
-                self.cache[uri] = res
+                content = res.content
+                self.cache[uri] = content
 
                 filename = os.path.normpath(uri.netloc + uri.path)
                 filepath = os.path.join(self.args.output, filename)
@@ -54,31 +57,34 @@ class WebCrawler:
                 with open(filepath, 'wb') as f:
                     f.write(res.content)
 
-                return res
+                return content
         except Exception as e:
             print(e)
+            self.failed.append(uri.geturl())
 
         return None
 
     def crawl(self, uri):
-        res = self.fetch_and_save(uri)
-        if not res:
-            print(f"Requesting {uri.geturl()} failed!")
+        html = self.fetch_and_save(uri)
+        if not html:
+            print(f'{uri.geturl()} not found!')
             return
 
-        if not res.headers['Content-Type'].startswith('text/html'):
-            # not html file... skip
-            return
-
-        soup = BeautifulSoup(res.content, 'html.parser')
+        soup = BeautifulSoup(html, 'html.parser')
 
         # find all hrefs
         href_tags = soup.find_all(href=True)
         for href_tag in href_tags:
             href_url = urljoin(uri.geturl(), href_tag.get('href'))
             href_uri = parse_uri(href_url)
-            if not self.validate_uri(href_uri) or href_uri in self.cache \
-                or not self.check_depth(href_uri):
+            if not self.validate_uri(href_uri):
+                continue
+
+            if href_tag.name == 'link':
+                self.fetch_and_save(href_uri)
+                continue
+
+            if href_uri in self.cache or not self.check_depth(href_uri):
                 continue
 
             self.queue.add(href_uri)
@@ -97,11 +103,24 @@ class WebCrawler:
     def start(self):
         self.queue.add(self.uri)
 
+        start_time = time.perf_counter()
         while len(self.queue) > 0:
             uri = self.queue.pop()
 
-            print(f"Crawling {uri.geturl()}...")
+            print(f'Crawling {uri.geturl()}...')
             self.crawl(uri)
+
+        failed_file = os.path.normpath(os.path.join(
+            self.args.output,
+            self.uri.netloc,
+            'failed.txt'
+        ))
+        with open(failed_file, 'w') as file:
+            file.write('\n'.join(self.failed))
+
+        time_elapsed = round(time.perf_counter() - start_time, 2)
+        print(f'Done! Time elasped: {time_elapsed}s')
+        print(f'Failed URLs: {len(self.failed)} (see {failed_file})')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
