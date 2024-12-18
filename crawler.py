@@ -110,7 +110,9 @@ class WebCrawler:
             print(f'Crawling {uri.geturl()}...')
             self.crawl(uri)
 
-        failed_urls = [url for url, ok in self.cache.items() if not ok]
+        failed_urls = [
+            uri.geturl() for uri, ok in self.cache.items() if not ok
+        ]
         failed_file = os.path.normpath(os.path.join(
             self.args.output,
             self.uri.netloc,
